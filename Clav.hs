@@ -141,3 +141,22 @@ alphaConversion (L x e) ls = L y (substitute e (V y) x)
 alphaConversion e _ = e
 
 -- not sure where to put this though...
+
+
+-- η-reduction
+etaReduction :: Exp -> Exp
+etaReduction e@(L x (A e1@(L _ _) (V y))) | x == y    = e1
+                                          | otherwise = e
+etaReduction e = e
+
+-- ghci> let r = (L (Var 'x') (A (L (Var 'y') (A (A (V (Var '+')) (V (Var 'y'))) (C (KNum 1)))) (V (Var 'x'))))
+-- ghci> r
+-- λx.(λy.((+ y) 1) x)
+-- ghci> etaReduction r
+-- λy.((+ y) 1)
+
+-- ghci> let r2 = (L (Var 'z') (A (L (Var 'y') (A (A (V (Var '+')) (V (Var 'y'))) (C (KNum 1)))) (V (Var 'x'))))
+-- ghci> r2
+-- λz.(λy.((+ y) 1) x)
+-- ghci> etaReduction r2
+-- λz.(λy.((+ y) 1) x)
