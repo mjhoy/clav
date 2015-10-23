@@ -1,0 +1,6 @@
+* clav
+
+/constants, lambda abstractions, application, variables/
+
+...while reading along with The Implementation of Functional
+Programming Languages.
