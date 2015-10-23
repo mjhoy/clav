@@ -74,6 +74,13 @@ occursBound x e = case e of
   L y e'  -> ((y == x && occursFree x e')
               || occursBound x e')
 
+-- return a variable that is not free in any expression in `ls`
+mkVar :: [Exp] -> Var
+mkVar ls = Var $ head $ filter notFree ['a'..'z']
+  where
+    notFree c = and $ map (\e' -> not $ occursFree (Var c) e') ls
+
+
 -- 2.2.2: β-conversion
 betaReduce :: Exp -> Exp
 betaReduce ex@(C _)     = ex
@@ -82,31 +89,26 @@ betaReduce ex@(L _ _)   = ex
 betaReduce ex@(A e1 e2) = case e1 of
    (L v e1') -> substitute e1' e2 v
    _ -> ex
- where
-   -- fig. 2.3, definition of E[M/x]
-   -- E[M/x]     E      M      x
-   substitute :: Exp -> Exp -> Var -> Exp
 
-   substitute e@(C _) _ _ = e
+-- fig. 2.3, definition of E[M/x]
+-- E[M/x]     E      M      x
+substitute :: Exp -> Exp -> Var -> Exp
 
-   substitute e@(V y) m x | x == y    = m
-                          | otherwise = e
+substitute e@(C _) _ _ = e
 
-   substitute (A e f) m x = A (substitute e m x) (substitute f m x)
+substitute e@(V y) m x | x == y    = m
+                       | otherwise = e
 
-   substitute (L y e) m x
-     | y == x    = (L y e)
-     | otherwise = if ((not (occursFree x e)) ||
-                       (not (occursFree y m))) then
-                     L y (substitute e m x)
-                   else
-                     let z = newVar [e,m]
-                     in  L z (substitute (substitute e (V z) y) m x)
-     where
-       newVar :: [Exp] -> Var
-       newVar ls = Var $ head $ filter notFree ['a'..'z']
-         where
-           notFree c = and $ map (\e' -> not $ occursFree (Var c) e') ls
+substitute (A e f) m x = A (substitute e m x) (substitute f m x)
+
+substitute (L y e) m x
+  | y == x    = (L y e)
+  | otherwise = if ((not (occursFree x e)) ||
+                    (not (occursFree y m))) then
+                  L y (substitute e m x)
+                else
+                  let z = mkVar [e,m]
+                  in  L z (substitute (substitute e (V z) y) m x)
 
 testExp2 :: Exp
 testExp2 = A (testExp) (C (KNum 4)) -- (λx.((+) x) 1) 4
@@ -128,4 +130,14 @@ twice = (L (Var 'f')
         --                                   ^       ^ if we change these to y's,
         --                                             can be reduced further
 
+-- α-conversion
+-- change lambda expression λx.E to
+--   λy.E[y/x]
+-- where y does not occur free in E or in any
+-- expressions in `ls`
+alphaConversion :: Exp -> [Exp] -> Exp
+alphaConversion (L x e) ls = L y (substitute e (V y) x)
+  where y = mkVar (e:ls)
+alphaConversion e _ = e
 
+-- not sure where to put this though...
